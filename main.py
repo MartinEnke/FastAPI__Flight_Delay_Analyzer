@@ -27,7 +27,6 @@ app.add_middleware(
 STATIC_FOLDER = "static/graphs"
 os.makedirs(STATIC_FOLDER, exist_ok=True)
 
-
 SQLITE_URI = 'sqlite:///flights.sqlite3'  # Using the correct SQLite URI
 IATA_LENGTH = 3
 
@@ -41,8 +40,13 @@ class FlightSearchResponse(BaseModel):
     DELAY: Optional[int] = 0
 
 
-# Function to generate the plot
 def generate_plot(file_path: str):
+    """
+    Generates a plot and saves it as a PNG file at the specified path.
+
+    Args:
+        file_path: The path where the generated plot will be saved.
+    """
     # Generate the plot (your plotting function)
     fig = visualization.plot_delays_by_hour()  # Assuming this returns a matplotlib figure
 
@@ -59,6 +63,12 @@ def generate_plot(file_path: str):
 
 @app.get("/", response_model=Dict[str, Dict[str, str]])
 def home():
+    """
+    Home endpoint providing general information and available API endpoints.
+
+    Returns:
+        A dictionary containing the status message and available endpoints.
+    """
     return {
         "message": {"text": "Welcome to the Flight Delay Analyzer API!"},
         "available_endpoints": {
@@ -73,7 +83,12 @@ def home():
 
 
 def get_db():
-    """Dependency to get the database session"""
+    """
+    Dependency to get the database session.
+
+    Returns:
+        A database session object.
+    """
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     engine = create_engine(SQLITE_URI, echo=True)
@@ -87,6 +102,15 @@ def get_db():
 
 @app.get("/flight_by_id", response_model=FlightSearchResponse)
 def flight_by_id(flight_id: int, db: Session = Depends(get_db)):
+    """
+    Fetches flight details by flight ID.
+
+    Args:
+        flight_id: The ID of the flight to be retrieved.
+
+    Returns:
+        Flight details as a response.
+    """
     try:
         data_manager = data.FlightData(db)
         results = data_manager.get_flight_by_id(flight_id)
@@ -99,11 +123,20 @@ def flight_by_id(flight_id: int, db: Session = Depends(get_db)):
 
 @app.get("/delays_by_airline", response_model=List[FlightSearchResponse])
 def delays_by_airline(airline: str, db: Session = Depends(get_db)):
+    """
+    Fetches delayed flights by airline.
+
+    Args:
+        airline: The name of the airline.
+
+    Returns:
+        A list of delayed flight details for the specified airline.
+    """
     try:
         data_manager = data.FlightData(db)
         results = data_manager.get_delayed_flights_by_airline(airline)
         if not results:
-            return []
+            return []  # Return an empty list if no results found
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
@@ -111,8 +144,18 @@ def delays_by_airline(airline: str, db: Session = Depends(get_db)):
 
 @app.get("/delays_by_airport", response_model=List[FlightSearchResponse])
 def delays_by_airport(airport_code: str, db: Session = Depends(get_db)):
+    """
+    Fetches delayed flights by airport code (IATA).
+
+    Args:
+        airport_code: The IATA code of the airport.
+
+    Returns:
+        A list of delayed flight details for the specified airport.
+    """
     if len(airport_code) != IATA_LENGTH or not airport_code.isalpha():
         raise HTTPException(status_code=400, detail="Invalid IATA code. Please provide a valid 3-letter airport code.")
+
     data_manager = data.FlightData(db)
     results = data_manager.get_delayed_flights_by_airport(airport_code)
     return results
@@ -120,10 +163,20 @@ def delays_by_airport(airport_code: str, db: Session = Depends(get_db)):
 
 @app.get("/flights_by_date", response_model=List[FlightSearchResponse])
 def flights_by_date(date: str, db: Session = Depends(get_db)):
+    """
+    Fetches flights by a specific date.
+
+    Args:
+        date: The date to fetch flights for, in the format 'DD/MM/YYYY'.
+
+    Returns:
+        A list of flight details for the specified date.
+    """
     try:
         date_input = datetime.strptime(date, '%d/%m/%Y')
     except ValueError:
         return {"error": "Invalid date format. Please provide a date in DD/MM/YYYY format."}
+
     data_manager = data.FlightData(db)
     results = data_manager.get_flights_by_date(date_input.day, date_input.month, date_input.year)
     return results
@@ -131,24 +184,38 @@ def flights_by_date(date: str, db: Session = Depends(get_db)):
 
 @app.get("/delayed_flights_by_hour", response_model=List[Dict[str, float]])
 def delayed_flights_by_hour(hour: Optional[int] = None, threshold: Optional[int] = 20, db: Session = Depends(get_db)):
+    """
+    Fetches the percentage of delayed flights by hour, with an optional threshold for delays.
+
+    Args:
+        hour: The hour to filter by (optional).
+        threshold: The minimum delay threshold to filter by (default is 20 minutes).
+
+    Returns:
+        A list of delayed flights by hour, optionally filtered by hour and delay threshold.
+    """
     try:
         data_manager = data.FlightData(db)
         results = data_manager.get_delayed_flights_by_hour(threshold)
         if not results:
             return []
+
+        # Optional filtering based on hour
         if hour is not None:
             results = [r for r in results if r['hour'] == hour]
+
         return results
     except Exception as e:
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
-# Endpoint for Bar Graph (percentage of delayed flights per airline)
 @app.get("/show_bar_graph", responses={200: {"content": {"image/png": {}}}})
 def show_bar_graph():
     """
-    API endpoint: Generates and returns the bar graph for percentage of delayed flights per airline as a PNG image.
+    Generates and returns the bar graph for percentage of delayed flights per airline as a PNG image.
+
+    The image is also saved to the static folder for later access.
     """
     # Create the graph in memory
     fig = visualization.plot_delays_by_airline()
@@ -168,16 +235,20 @@ def show_bar_graph():
     return JSONResponse(content={
         "message": "Graph 'bar_graph.png' has been successfully generated and saved in the static folder.",
         "image_url": f"/static/graphs/bar_graph.png"
-        # You can use this URL to display the image in the frontend or UI
     })
 
 
-# Endpoint for Hourly Bar Graph (percentage of delayed flights by hour)
 @app.get("/show_hourly_bar_graph")
 async def show_hourly_bar_graph(background_tasks: BackgroundTasks):
     """
-    API endpoint: Initiates graph generation in the background for hourly delays.
+    Initiates graph generation in the background for hourly delays.
     Returns a response indicating the task is in progress.
+
+    Args:
+        background_tasks: A background task object to execute the task asynchronously.
+
+    Returns:
+        A message indicating the graph generation is in progress.
     """
     file_path = "static/graphs/hourly_bar_graph.png"
 
@@ -185,14 +256,15 @@ async def show_hourly_bar_graph(background_tasks: BackgroundTasks):
     background_tasks.add_task(generate_plot, file_path)
 
     # Return a response indicating that the graph generation is in progress
-    return {"message": "Graph generation is in progress, you can check it later."}
+    return {"message": "Graph is generated in the background and successfully saved in the static folder."}
 
 
-# Endpoint for Heatmap of Routes (percentage of delayed flights by routes)
 @app.get("/show_heatmap_of_routes", responses={200: {"content": {"image/png": {}}}})
 def show_heatmap_of_routes():
     """
-    API endpoint: Generates and returns a heatmap showing the percentage of delayed flights distributed across flight routes as a PNG image.
+    Generates and returns a heatmap showing the percentage of delayed flights distributed across flight routes as a PNG image.
+
+    The image is also saved to the static folder for later access.
     """
     # Create the heatmap in memory
     fig = visualization.plot_heatmap_of_routes()
@@ -212,20 +284,21 @@ def show_heatmap_of_routes():
     return JSONResponse(content={
         "message": "Heatmap 'heatmap_of_routes.png' has been successfully generated and saved in the static folder.",
         "image_url": f"/static/graphs/heatmap_of_routes.png"
-        # You can use this URL to display the image in the frontend or UI
     })
 
 
 @app.get("/show_map_of_routes")
 def show_map_of_routes():
     """
-    API endpoint: Generates and saves a map showing major delayed routes across the USA.
+    Generates and saves an interactive map showing major delayed routes across the USA.
+    The map is saved as an HTML file in the static folder.
     """
     file_path = "static/maps/map_of_routes.html"
     visualization.plot_map_of_routes(file_path)
 
     # Return the file as a response, but the proper MIME type for HTML files
     return FileResponse(file_path, media_type="text/html")
+
 
 
 # To run the FastAPI app in a development environment:

@@ -1,4 +1,5 @@
 import matplotlib
+
 matplotlib.use('Agg')  # Use the Agg backend for non-interactive plotting
 import pandas as pd
 import seaborn as sns
@@ -7,8 +8,17 @@ import folium
 import os
 from sqlalchemy import create_engine
 
+
 # Function to plot the delays by airline and return the figure
 def plot_delays_by_airline():
+    """
+    Generates a bar plot showing the percentage of delayed flights for each airline.
+
+    The plot is based on the data from the 'flights' and 'airlines' tables in the SQLite database.
+
+    Returns:
+        fig (matplotlib.figure.Figure): The generated bar plot figure.
+    """
     engine = create_engine('sqlite:///flights.sqlite3')
     query = """
     SELECT 
@@ -22,7 +32,7 @@ def plot_delays_by_airline():
     df = pd.read_sql(query, engine)
     df['percent_delayed'] = (df['delayed_flights'] / df['total_flights']) * 100
 
-    fig = plt.figure(figsize=(12,6))
+    fig = plt.figure(figsize=(12, 6))
     sns.barplot(x='AIRLINE', y='percent_delayed', data=df)
     plt.xticks(rotation=45, ha='right')
     plt.ylabel('Percentage of Delayed Flights')
@@ -34,6 +44,14 @@ def plot_delays_by_airline():
 
 # Function to plot the delays by hour and return the figure
 def plot_delays_by_hour():
+    """
+    Generates a bar plot showing the percentage of delayed flights by hour of day.
+
+    The plot is based on the data from the 'flights' table in the SQLite database.
+
+    Returns:
+        fig (matplotlib.figure.Figure): The generated bar plot figure.
+    """
     engine = create_engine('sqlite:///flights.sqlite3')
     query = """
     SELECT 
@@ -47,7 +65,7 @@ def plot_delays_by_hour():
     df = pd.read_sql(query, engine)
     df['percent_delayed'] = (df['delayed_flights'] / df['total_flights']) * 100
 
-    fig = plt.figure(figsize=(12,6))
+    fig = plt.figure(figsize=(12, 6))
     sns.barplot(x='hour', y='percent_delayed', data=df, palette="YlGnBu")
     plt.ylabel('Percentage of Delayed Flights')
     plt.xlabel('Hour of Day')
@@ -60,6 +78,14 @@ def plot_delays_by_hour():
 
 # Function to plot the heatmap of routes and return the figure
 def plot_heatmap_of_routes():
+    """
+    Generates a heatmap showing the percentage of delayed flights by route (origin → destination).
+
+    The heatmap is based on the data from the 'flights' table in the SQLite database, grouped by origin and destination.
+
+    Returns:
+        fig (matplotlib.figure.Figure): The generated heatmap figure.
+    """
     engine = create_engine('sqlite:///flights.sqlite3')
     query = """
     SELECT 
@@ -74,7 +100,7 @@ def plot_heatmap_of_routes():
     df['percent_delayed'] = (df['delayed_flights'] / df['total_flights']) * 100
     pivot_df = df.pivot(index='origin', columns='destination', values='percent_delayed')
 
-    fig = plt.figure(figsize=(9,8))
+    fig = plt.figure(figsize=(9, 8))
     sns.heatmap(pivot_df, cmap="Reds", linewidths=0.5)
     plt.title('Heatmap: % Delayed Flights by Route (Origin → Destination)')
     plt.ylabel('Origin Airport')
@@ -83,10 +109,20 @@ def plot_heatmap_of_routes():
 
     return fig
 
+
 # Function to plot map of routes and save the map
 def plot_map_of_routes(file_path: str):
     """
-    Generate and save an interactive map visualizing the major delayed flight routes across the USA.
+    Generates and saves an interactive map visualizing major delayed flight routes across the USA.
+
+    Routes with more than 30% delayed flights are drawn. Routes are color-coded:
+    - Red for high delays (>50%)
+    - Orange for moderate delays (30-50%)
+
+    The map is saved as an HTML file at the provided file path.
+
+    Args:
+        file_path (str): The path where the generated map will be saved.
     """
     engine = create_engine('sqlite:///flights.sqlite3')
 

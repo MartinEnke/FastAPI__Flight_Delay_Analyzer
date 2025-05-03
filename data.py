@@ -5,6 +5,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import folium
+import os
 
 DATABASE_URL = "sqlite:///flights.sqlite3"
 engine = create_engine(DATABASE_URL, echo=True)
@@ -12,35 +13,80 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 class FlightData:
+    """
+    A class that handles database queries related to flight data.
+
+    Attributes:
+        db_session: A database session object for executing queries.
+
+    Methods:
+        _execute_query(query: str, params: dict): Executes a query and returns the result as a list of dictionaries.
+        get_flight_by_id(flight_id: int): Returns flight details by ID.
+        get_flights_by_date(day: int, month: int, year: int): Returns flights for a specific date.
+        get_delayed_flights_by_airline(airline: str): Returns delayed flights for a specific airline.
+        get_delayed_flights_by_airport(airport: str): Returns delayed flights for a specific airport.
+        get_delayed_flights_by_hour(threshold: int): Returns delayed flights grouped by hour, with an optional threshold for delay.
+    """
+
     def __init__(self, db_session):
-        self.db_session = db_session  # Accept the session object
+        """
+        Initializes the FlightData object with a database session.
+        """
+        self.db_session = db_session
 
     def _execute_query(self, query: str, params: dict):
+        """
+        Executes a query on the database and returns the result as a list of dictionaries.
+
+        Args:
+            query: SQL query string.
+            params: Parameters to be passed with the query.
+
+        Returns:
+            A list of dictionaries with query results.
+        """
         try:
             result = self.db_session.execute(text(query), params)
-            columns = result.keys()  # Get column names from the result
+            columns = result.keys()
             result_dicts = [dict(zip(columns, row)) for row in result.fetchall()]
-
-            # Log the first few records to check the structure of the data
             print(f"Columns: {columns}")
-            print(f"First 5 Results: {result_dicts[:5]}")  # Show the first 5 rows for debugging
-
-            return result_dicts  # Return list of dictionaries
+            print(f"First 5 Results: {result_dicts[:5]}")  # Log the first few rows for debugging
+            return result_dicts
         except Exception as e:
             print(f"Database error: {str(e)}")
             return []
 
     def get_flight_by_id(self, flight_id: int):
+        """
+        Fetches flight details by flight ID.
+
+        Args:
+            flight_id: The ID of the flight.
+
+        Returns:
+            A list of dictionaries containing flight data.
+        """
         params = {'id': flight_id}
         query = """
-        SELECT flights.*, airlines.airline, flights.ID as FLIGHT_ID, flights.DEPARTURE_DELAY as DELAY 
-        FROM flights 
-        JOIN airlines ON flights.airline = airlines.id 
+        SELECT flights.*, airlines.airline, flights.ID as FLIGHT_ID, flights.DEPARTURE_DELAY as DELAY
+        FROM flights
+        JOIN airlines ON flights.airline = airlines.id
         WHERE flights.ID = :id
         """
         return self._execute_query(query, params)
 
     def get_flights_by_date(self, day: int, month: int, year: int):
+        """
+        Fetches flights for a specific date.
+
+        Args:
+            day: Day of the month.
+            month: Month of the year.
+            year: Year.
+
+        Returns:
+            A list of dictionaries containing flight data.
+        """
         query = """
         SELECT flights.*, airlines.airline, flights.ID as FLIGHT_ID, flights.DEPARTURE_DELAY as DELAY
         FROM flights
@@ -51,6 +97,15 @@ class FlightData:
         return self._execute_query(query, params)
 
     def get_delayed_flights_by_airline(self, airline: str):
+        """
+        Fetches delayed flights for a specific airline.
+
+        Args:
+            airline: The name of the airline.
+
+        Returns:
+            A list of dictionaries containing delayed flight data.
+        """
         params = {'airline': f"%{airline}%"}
         query = """
         SELECT flights.*, airlines.airline, flights.ID as FLIGHT_ID, flights.DEPARTURE_DELAY as DELAY
@@ -62,6 +117,15 @@ class FlightData:
         return self._execute_query(query, params)
 
     def get_delayed_flights_by_airport(self, airport: str):
+        """
+        Fetches delayed flights for a specific airport.
+
+        Args:
+            airport: The airport code (e.g., "JFK").
+
+        Returns:
+            A list of dictionaries containing delayed flight data.
+        """
         params = {'airport': f"%{airport}%"}
         query = """
         SELECT flights.*, airlines.airline, flights.ID as FLIGHT_ID, flights.DEPARTURE_DELAY as DELAY
@@ -73,12 +137,21 @@ class FlightData:
         return self._execute_query(query, params)
 
     def get_delayed_flights_by_hour(self, threshold: int):
+        """
+        Fetches delayed flights grouped by hour.
+
+        Args:
+            threshold: Minimum departure delay to consider as "delayed."
+
+        Returns:
+            A list of dictionaries containing delayed flight data, grouped by hour.
+        """
         query = """
         SELECT 
             CAST(substr(flights.scheduled_departure, 1, 2) AS INTEGER) AS hour,
             COUNT(flights.id) AS total_flights,
             SUM(CASE WHEN flights.departure_delay > 20 THEN 1 ELSE 0 END) AS delayed_flights,
-            ROUND(AVG(flights.departure_delay), 2) AS average_departure_delay -- Avg. delay per hour
+            ROUND(AVG(flights.departure_delay), 2) AS average_departure_delay
         FROM flights
         WHERE flights.departure_delay >= :threshold
         GROUP BY hour
@@ -86,9 +159,15 @@ class FlightData:
         """
         return self._execute_query(query, {"threshold": threshold})
 
+
 # Function to plot the delays by airline and save as a PNG image
 def plot_delays_by_airline(file_path: str):
-    engine = create_engine('sqlite:///flights.sqlite3')
+    """
+    Generates a bar plot for the percentage of delayed flights per airline and saves it as a PNG image.
+
+    Args:
+        file_path: The path where the image will be saved.
+    """
     query = """
     SELECT 
         airlines.airline AS AIRLINE, 
@@ -112,9 +191,15 @@ def plot_delays_by_airline(file_path: str):
     plt.savefig(file_path, format="png")
     plt.close()
 
+
 # Function to plot the delays by hour and save as a PNG image
 def plot_delays_by_hour(file_path: str):
-    engine = create_engine('sqlite:///flights.sqlite3')
+    """
+    Generates a bar plot for the percentage of delayed flights by hour and saves it as a PNG image.
+
+    Args:
+        file_path: The path where the image will be saved.
+    """
     query = """
     SELECT 
         CAST(substr(flights.scheduled_departure, 1, 2) AS INTEGER) AS hour,
@@ -139,9 +224,15 @@ def plot_delays_by_hour(file_path: str):
     plt.savefig(file_path, format="png")
     plt.close()
 
+
 # Function to plot the heatmap of routes and save as a PNG image
 def plot_heatmap_of_routes(file_path: str):
-    engine = create_engine('sqlite:///flights.sqlite3')
+    """
+    Generates a heatmap for delayed flights by route (origin → destination) and saves it as a PNG image.
+
+    Args:
+        file_path: The path where the image will be saved.
+    """
     query = """
     SELECT 
         flights.origin_airport AS origin,
@@ -166,11 +257,15 @@ def plot_heatmap_of_routes(file_path: str):
     plt.savefig(file_path, format="png")
     plt.close()
 
+
 # Function to plot the map of routes and save as an HTML file
 def plot_map_of_routes(file_path: str):
-    engine = create_engine('sqlite:///flights.sqlite3')
+    """
+    Generates and saves an interactive map of delayed flight routes across the USA.
 
-    # Get delay data
+    Args:
+        file_path: The path where the HTML map will be saved.
+    """
     query = """
     SELECT 
         flights.origin_airport AS origin,
