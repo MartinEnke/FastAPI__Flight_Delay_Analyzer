@@ -94,3 +94,113 @@ it's not optimized out of the box, and you’ll need to make adjustments to ensu
 If your app relies heavily on generating plots or handling complex image processing in real-time,
 you might consider moving that part of the workload to a dedicated task queue (e.g., Celery),
 or use background processing frameworks that can handle these types of workloads separately.
+
+
+Why BackgroundTasks?
+Simplicity: It integrates well into FastAPI, requiring minimal changes to your existing code.
+
+Non-blocking: It allows your FastAPI server to remain responsive and handle other requests
+while the graph generation runs in the background.
+
+Efficiency: For a small application like yours, using background tasks is efficient
+and avoids the complexity of setting up more heavyweight solutions like task queues or external workers.
+
+Steps to Implement BackgroundTasks:
+Install Dependencies (if you haven't already): Make sure you're using FastAPI and Uvicorn as your server:
+
+
+pip install fastapi uvicorn
+Update Your Endpoint to Use Background Tasks: You'll modify your graph generation endpoint to use FastAPI's
+BackgroundTasks.
+
+Example Implementation:
+Here’s how you can modify one of your endpoints, like show_hourly_bar_graph, to use background tasks:
+
+Update your FastAPI route:
+
+from fastapi import FastAPI, BackgroundTasks
+import io
+from fastapi.responses import StreamingResponse
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+
+app = FastAPI()
+
+# Function to generate the plot
+def generate_plot(file_path: str):
+    # Generate the plot (your plotting function)
+    fig = visualization.plot_delays_by_hour()  # Assuming this returns a matplotlib figure
+
+    # Convert plot to bytes
+    buf = io.BytesIO()
+    canvas = FigureCanvas(fig)
+    canvas.print_png(buf)
+    buf.seek(0)
+
+    # Save the plot as a file in the static directory (optional)
+    with open(file_path, 'wb') as f:
+        f.write(buf.read())
+
+# Endpoint with BackgroundTasks
+@app.get("/show_hourly_bar_graph")
+async def show_hourly_bar_graph(background_tasks: BackgroundTasks):
+    file_path = "static/graphs/hourly_bar_graph.png"
+
+    # Add the task to the background
+    background_tasks.add_task(generate_plot, file_path)
+
+    # Return a response indicating the task is in progress
+    return {"message": "Graph generation is in progress, you can check it later."}
+
+
+What this does:
+Background Task: The generate_plot function runs in the background (outside the main FastAPI thread)
+so that the server can continue to process other requests.
+
+Immediate Response: The client (e.g., Postman or Swagger) gets an immediate response indicating
+that the graph is being generated, without waiting for the plot to finish.
+
+Saving the Plot: You can still save the plot to a file (hourly_bar_graph.png) and serve it when needed.
+
+Serve the Generated Image (Optional): If you want to serve the image after it’s generated,
+you can implement another endpoint that serves the image once it’s ready. For example:
+
+
+@app.get("/get_hourly_bar_graph")
+async def get_hourly_bar_graph():
+    file_path = "static/graphs/hourly_bar_graph.png"
+
+    # Check if the image exists, then return it
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="image/png")
+    else:
+        return {"message": "The graph is still being generated, please try again later."}
+
+
+Why This Solution?
+Improved Performance: It allows you to keep the FastAPI server responsive while performing computationally
+expensive tasks like plotting.
+
+Simple to Implement: It doesn't require introducing any external libraries like Celery or Redis,
+and it integrates well with FastAPI's asynchronous nature.
+
+Better User Experience: The client gets a quick response while the task runs in the background,
+and they can fetch the result when it’s ready.
+
+Things to Consider:
+If you expect high concurrency or need to perform multiple background tasks simultaneously,
+you might want to explore task queues like Celery for better scalability.
+
+The background task runs within the FastAPI app, which works well for low-to-moderate workloads
+but may need scaling for more demanding applications.
+
+Conclusion:
+I recommend starting with BackgroundTasks because it’s simple, effective, and fits your use case well.
+If you run into performance issues later or need to scale further, then you can explore more complex
+solutions like Celery. Let me know if you need help setting that up!
+
+
+
+
+
+
+
