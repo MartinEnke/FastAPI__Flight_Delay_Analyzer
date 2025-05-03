@@ -1,11 +1,11 @@
+import matplotlib
+matplotlib.use('Agg')  # Use the Agg backend for non-interactive plotting
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import folium
 import os
 from sqlalchemy import create_engine
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-import io
 
 # Function to plot the delays by airline and return the figure
 def plot_delays_by_airline():
@@ -82,7 +82,6 @@ def plot_heatmap_of_routes():
     plt.tight_layout()
 
     return fig
-
 
 # Function to plot map of routes and save the map
 def plot_map_of_routes(file_path: str):

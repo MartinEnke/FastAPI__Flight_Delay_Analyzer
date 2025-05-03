@@ -1,16 +1,15 @@
 from typing import Optional, List, Dict
 import visualization
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime
 import data
 from pydantic import BaseModel
-from fastapi.responses import FileResponse, Response
-import os
+from fastapi.responses import FileResponse, Response, JSONResponse
 import io
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from fastapi.middleware.cors import CORSMiddleware
-
+import os
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -24,6 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Folder to save images
+STATIC_FOLDER = "static/graphs"
+os.makedirs(STATIC_FOLDER, exist_ok=True)
+
+
 SQLITE_URI = 'sqlite:///flights.sqlite3'  # Using the correct SQLite URI
 IATA_LENGTH = 3
 
@@ -35,6 +39,22 @@ class FlightSearchResponse(BaseModel):
     DESTINATION_AIRPORT: str
     AIRLINE: str
     DELAY: Optional[int] = 0
+
+
+# Function to generate the plot
+def generate_plot(file_path: str):
+    # Generate the plot (your plotting function)
+    fig = visualization.plot_delays_by_hour()  # Assuming this returns a matplotlib figure
+
+    # Convert plot to bytes
+    buf = io.BytesIO()
+    canvas = FigureCanvas(fig)
+    canvas.print_png(buf)
+    buf.seek(0)
+
+    # Save the plot as a file in the static directory
+    with open(file_path, 'wb') as f:
+        f.write(buf.read())
 
 
 @app.get("/", response_model=Dict[str, Dict[str, str]])
@@ -124,6 +144,7 @@ def delayed_flights_by_hour(hour: Optional[int] = None, threshold: Optional[int]
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
+# Endpoint for Bar Graph (percentage of delayed flights per airline)
 @app.get("/show_bar_graph", responses={200: {"content": {"image/png": {}}}})
 def show_bar_graph():
     """
@@ -138,28 +159,36 @@ def show_bar_graph():
     canvas.print_png(buf)
     buf.seek(0)  # Move to the start of the BytesIO buffer
 
-    # Return the image as a response
-    return Response(content=buf.read(), media_type="image/png")
+    # Save the image to static folder
+    file_path = os.path.join(STATIC_FOLDER, "bar_graph.png")
+    with open(file_path, "wb") as f:
+        f.write(buf.read())
+
+    # Return a message with image and confirmation
+    return JSONResponse(content={
+        "message": "Graph 'bar_graph.png' has been successfully generated and saved in the static folder.",
+        "image_url": f"/static/graphs/bar_graph.png"
+        # You can use this URL to display the image in the frontend or UI
+    })
 
 
-@app.get("/show_hourly_bar_graph", responses={200: {"content": {"image/png": {}}}})
-def show_hourly_bar_graph():
+# Endpoint for Hourly Bar Graph (percentage of delayed flights by hour)
+@app.get("/show_hourly_bar_graph")
+async def show_hourly_bar_graph(background_tasks: BackgroundTasks):
     """
-    Generates and returns the bar graph for percentage of delayed flights per hour as a PNG image.
+    API endpoint: Initiates graph generation in the background for hourly delays.
+    Returns a response indicating the task is in progress.
     """
-    # Create the graph in memory
-    fig = visualization.plot_delays_by_hour()
+    file_path = "static/graphs/hourly_bar_graph.png"
 
-    # Convert the plot to bytes in memory
-    buf = io.BytesIO()
-    canvas = FigureCanvas(fig)
-    canvas.print_png(buf)
-    buf.seek(0)  # Move to the start of the BytesIO buffer
+    # Add the task to generate the graph in the background
+    background_tasks.add_task(generate_plot, file_path)
 
-    # Return the image as a response
-    return Response(content=buf.read(), media_type="image/png")
+    # Return a response indicating that the graph generation is in progress
+    return {"message": "Graph generation is in progress, you can check it later."}
 
 
+# Endpoint for Heatmap of Routes (percentage of delayed flights by routes)
 @app.get("/show_heatmap_of_routes", responses={200: {"content": {"image/png": {}}}})
 def show_heatmap_of_routes():
     """
@@ -174,8 +203,17 @@ def show_heatmap_of_routes():
     canvas.print_png(buf)
     buf.seek(0)  # Move to the start of the BytesIO buffer
 
-    # Return the image as a response
-    return Response(content=buf.read(), media_type="image/png")
+    # Save the image to static folder
+    file_path = os.path.join(STATIC_FOLDER, "heatmap_of_routes.png")
+    with open(file_path, "wb") as f:
+        f.write(buf.read())
+
+    # Return a message with image and confirmation
+    return JSONResponse(content={
+        "message": "Heatmap 'heatmap_of_routes.png' has been successfully generated and saved in the static folder.",
+        "image_url": f"/static/graphs/heatmap_of_routes.png"
+        # You can use this URL to display the image in the frontend or UI
+    })
 
 
 @app.get("/show_map_of_routes")
@@ -193,3 +231,4 @@ def show_map_of_routes():
 # To run the FastAPI app in a development environment:
 # uvicorn main:app --reload
 # http://127.0.0.1:8000/docs
+# http://127.0.0.1:8000/redoc

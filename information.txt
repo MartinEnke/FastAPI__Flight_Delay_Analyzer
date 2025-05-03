@@ -200,6 +200,49 @@ solutions like Celery. Let me know if you need help setting that up!
 
 
 
+1. Background Task for show_hourly_bar_graph:
+When you introduced the background task for show_hourly_bar_graph,
+the request flow was adjusted so that the graph generation didn't block the main thread,
+allowing FastAPI to send a response that the graph generation is in progress.
+This also helped show_bar_graph and show_heatmap_of_routes work since FastAPI could handle
+the request for these graphs without any interruptions from the show_hourly_bar_graph task.
+
+Essentially, adding the background task may have alleviated any resource contention
+or potential blocking caused by the long-running process of show_hourly_bar_graph.
+FastAPI was able to process the other endpoints in parallel while the background task was handled separately.
+
+2. Request Handling in FastAPI:
+FastAPI can handle multiple requests concurrently, so when show_hourly_bar_graph was moved to the background,
+it didn’t block the server’s ability to process the other graph generation requests like show_bar_graph
+or show_heatmap_of_routes. This concurrent handling of requests allowed these two endpoints to return their
+images without any delay.
+
+Without the background task, show_hourly_bar_graph may have been blocking the event loop or taking
+more time to generate the graph, which could have caused other endpoints to time out or not respond properly.
+By moving the show_hourly_bar_graph generation to the background, it removed the blocking issue,
+which probably improved the handling of the other requests.
+
+3. Asynchronous Execution:
+FastAPI is built on Starlette (which is asynchronous), so it processes requests asynchronously by default.
+However, long-running tasks (like complex graph generation) might block the main thread,
+especially if the task is not properly offloaded to a background worker.
+
+By offloading show_hourly_bar_graph to a background task, FastAPI no longer blocks the main event loop for
+that specific request. This enables other requests (like the ones for bar and heatmap graphs) to execute without delay.
+
+Key Takeaway:
+The show_hourly_bar_graph background task likely helped in allowing show_bar_graph and show_heatmap_of_routes
+to run smoothly because it eliminated any potential for blocking in the event loop.
+
+By isolating the time-consuming process of generating the hourly bar graph, it allowed FastAPI
+to handle multiple requests simultaneously without delays, improving the overall responsiveness of the app.
+
+In short, moving show_hourly_bar_graph to the background task allowed the server to continue handling
+requests for other endpoints without delay, which made the show_bar_graph and show_heatmap_of_routes
+endpoints work properly even with their synchronous rendering.
+
+
+
 
 
 

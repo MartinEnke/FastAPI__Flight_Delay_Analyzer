@@ -5,7 +5,6 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import folium
-import os
 
 DATABASE_URL = "sqlite:///flights.sqlite3"
 engine = create_engine(DATABASE_URL, echo=True)
