@@ -1,0 +1,96 @@
+The Problem with generating images from big databases through FastAPI
+
+FastAPI is a highly regarded and efficient tool, but like any framework,
+it has its own set of challenges depending on how it's used.
+The issue you're experiencing might stem from how you're trying to integrate CPU-intensive tasks
+(like image generation) into a framework that excels at handling I/O-bound asynchronous tasks (like serving APIs).
+
+Here’s a breakdown of why this could be happening:
+
+1. Synchronous Blocking Code:
+FastAPI is designed to handle asynchronous tasks very efficiently, but plotting libraries like Matplotlib
+and Seaborn are synchronous by nature. This means that whenever you run these functions
+(which perform blocking I/O operations, such as rendering the plot), it can block the entire FastAPI server,
+causing it to become unresponsive or crash. FastAPI, being an asynchronous framework,
+excels with non-blocking I/O operations but doesn’t handle blocking operations
+like plt.show() or plt.savefig() well in a real-time server context.
+
+2. Concurrency and Resource Management:
+FastAPI uses asynchronous processing for handling multiple requests concurrently.
+When an operation is blocking (like generating a plot), it takes up the resources
+that FastAPI could use to serve other requests, leading to performance issues.
+When you run a heavy synchronous function like generating graphs inside FastAPI,
+it can stall the server, causing timeouts or crashes.
+
+3. Serving Large Files:
+Matplotlib and other plotting libraries create images in memory. When FastAPI tries to serve these images,
+it may run into memory consumption issues, especially when trying to handle multiple requests at once.
+This is particularly relevant for large image files or complex plots.
+
+4. Flask vs. FastAPI:
+Flask is traditionally used in more synchronous applications, so blocking operations like generating images
+don't cause as much trouble because they block the thread for a single request only. FastAPI,
+on the other hand, is optimized for handling many asynchronous requests concurrently, and blocking operations
+can disrupt its event loop.
+
+Solutions to Integrate Plotting in FastAPI:
+Offload Plotting to a Background Task: You can use FastAPI’s BackgroundTasks to offload the plotting
+task to a background process, so the server isn’t blocked while the plot is being generated.
+This way, FastAPI can continue handling other requests while the plotting happens in the background.
+
+
+from fastapi import BackgroundTasks
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+
+def generate_plot(file_path: str):
+    fig = visualization.plot_delays_by_airline()  # your plotting function
+    buf = io.BytesIO()
+    canvas = FigureCanvas(fig)
+    canvas.print_png(buf)
+    buf.seek(0)
+    with open(file_path, 'wb') as f:
+        f.write(buf.read())
+
+@app.get("/show_hourly_bar_graph")
+def show_hourly_bar_graph(background_tasks: BackgroundTasks):
+    file_path = "static/graphs/hourly_bar_graph.png"
+    background_tasks.add_task(generate_plot, file_path)
+    return {"message": "Graph generation is in progress"}
+
+Generate Images Beforehand: Another option is to pre-generate your plots and save them to a static directory.
+Then, just serve them as static files via FastAPI. This would avoid generating the plots on every request
+and significantly reduce load.
+
+Use a Separate Thread or Process: You could run the plotting code in a separate thread or process,
+isolating it from the main FastAPI server thread. This will allow FastAPI to continue serving requests
+without waiting for the plotting task to finish. You can use Python's concurrent.futures.ThreadPoolExecutor
+or multiprocessing to handle this.
+
+Optimize Plotting Code: If you’re only generating a simple plot, consider using lighter, more efficient
+libraries like Plotly or Bokeh, which offer interactive plots and better performance for web applications.
+
+Stream Images Instead of Saving to Disk: Instead of saving the image to a file and then returning it,
+you can stream the image directly from memory. This can improve performance and remove the need for disk I/O.
+
+
+from fastapi.responses import StreamingResponse
+
+@app.get("/show_hourly_bar_graph")
+def show_hourly_bar_graph():
+    file_path = "static/graphs/hourly_bar_graph.png"
+    fig = visualization.plot_delays_by_hour()  # your plotting function
+    buf = io.BytesIO()
+    canvas = FigureCanvas(fig)
+    canvas.print_png(buf)
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="image/png")
+
+Why FastAPI is Still a Great Tool:
+Despite these challenges, FastAPI’s asynchronous nature is its strength, particularly for handling a large number
+of concurrent I/O requests. For use cases that involve API calls, database interactions, and streaming data,
+FastAPI outperforms Flask and many other frameworks. However, for CPU-intensive tasks like image generation,
+it's not optimized out of the box, and you’ll need to make adjustments to ensure smooth performance.
+
+If your app relies heavily on generating plots or handling complex image processing in real-time,
+you might consider moving that part of the workload to a dedicated task queue (e.g., Celery),
+or use background processing frameworks that can handle these types of workloads separately.
