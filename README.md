@@ -1,10 +1,10 @@
 # FastAPI - Flight Delay Analyzer
 
-**FastAPI version of the Flight Delay Analyzer** project. 
+
 This web application allows users to search for flight delay data based on various parameters such as flight ID, airline, airport, and hour. 
 It interacts with a FastAPI backend to fetch the data and displays the results in a user-friendly interface.
 
-<img src="banner.png" alt="Flight Delay Analyzer Banner" 
+![Banner](banner.png)
 ## Technologies Used
 
 ### Tools:
@@ -68,8 +68,9 @@ You may need to adjust the frontend files to connect to the appropriate backend 
 
 ### 5. Open the Web Application
 Once everything is set up, navigate to http://localhost:8000 in your browser to view the web application.
+##
+### Acknowledgments
 
-
-Acknowledgments
 Thanks to FastAPI for providing a fast and modern web framework for Python.
+
 Thanks to Matplotlib for helping us create beautiful visualizations for the project.
