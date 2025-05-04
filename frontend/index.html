@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Delay Analyzer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Flight Delay Analyzer</h1>
+
+        <!-- Flight search by ID -->
+        <div class="section">
+            <h2>Search Flight by ID</h2>
+            <input type="number" id="flight-id" placeholder="Enter Flight ID">
+            <button onclick="getFlightById()">Search Flight</button>
+            <div id="flight-info"></div>
+        </div>
+
+        <!-- Delayed flights by airline -->
+        <div class="section">
+            <h2>Delayed Flights by Airline</h2>
+            <input type="text" id="airline-name" placeholder="Enter Airline Name">
+            <button onclick="getDelaysByAirline()">Search Delays</button>
+            <div id="delays-by-airline"></div>
+        </div>
+
+        <!-- Delayed flights by Airport -->
+        <div class="section">
+            <h2>Delayed Flights by Airport</h2>
+            <input type="text" id="airport-name" placeholder="Enter Airport IATA">
+            <button onclick="getDelaysByAirport()">Search Airport (IATA)</button>
+            <div id="delays-by-airport"></div>
+        </div>
+
+        <!-- Flights by Date -->
+        <div class="section">
+            <h2>Search Flights by Date</h2>
+            <input type="text" id="flight-date" placeholder="Enter Date (DD/MM/YYYY)">
+            <button onclick="getFlightsByDate()">Search Flights</button>
+            <div id="flights-by-date"></div>
+        </div>
+
+
+        <!-- Delayed Flights by Hour -->
+        <div class="section">
+            <h2>Delayed Flights by Hour</h2>
+            <input type="number" id="hour" placeholder="Enter Hour (0-23)">
+            <button onclick="getDelayedFlightsByHour()">Search Delays by Hour</button>
+            <div id="delayed-by-hour"></div>
+        </div>
+
+
+        <!-- Display Graphs -->
+        <div class="section">
+            <h2>Generate Graphs</h2>
+            <button onclick="generateGraph()">Generate Delay by Airline Graph</button>
+            <div id="graph-message"></div>
+            <div id="graph-container"></div>
+        </div>
+
+
+        <!-- Generate Heatmap -->
+        <div class="section">
+            <h2>Generate Heatmap</h2>
+            <button onclick="generateHeatmap()">Generate Heatmap</button>
+            <div id="graph-message"></div>
+            <div id="graph-container"></div>
+        </div>
+
+        <!-- Show Map of Routes -->
+        <div class="section">
+            <h2>Show Map of Routes</h2>
+            <button onclick="showMap()">Show Map</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

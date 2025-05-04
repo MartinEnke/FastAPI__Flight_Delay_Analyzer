@@ -92,6 +92,7 @@ class FlightData:
         FROM flights
         JOIN airlines ON flights.airline = airlines.id
         WHERE flights.DAY = :day AND flights.MONTH = :month AND flights.YEAR = :year
+        Limit 10
         """
         params = {'day': day, 'month': month, 'year': year}
         return self._execute_query(query, params)
@@ -113,6 +114,8 @@ class FlightData:
         JOIN airlines ON flights.airline = airlines.id
         WHERE airlines.airline LIKE :airline
         AND flights.DEPARTURE_DELAY > 20
+        ORDER BY DEPARTURE_DELAY DESC
+        Limit 10
         """
         return self._execute_query(query, params)
 
@@ -133,6 +136,7 @@ class FlightData:
         JOIN airlines ON flights.airline = airlines.id
         WHERE flights.ORIGIN_AIRPORT LIKE :airport
         AND flights.DEPARTURE_DELAY > 20
+        Limit 10
         """
         return self._execute_query(query, params)
 
@@ -156,6 +160,7 @@ class FlightData:
         WHERE flights.departure_delay >= :threshold
         GROUP BY hour
         ORDER BY hour
+        Limit 10
         """
         return self._execute_query(query, {"threshold": threshold})
 

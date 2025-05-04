@@ -1,18 +1,27 @@
-from typing import Optional, List, Dict
+import data
 import visualization
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime
-import data
 from pydantic import BaseModel
-from fastapi.responses import FileResponse, Response, JSONResponse
-import io
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from typing import Optional, List, Dict
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+import io
 import os
+
+STATIC_FOLDER = "static/graphs"
+os.makedirs(STATIC_FOLDER, exist_ok=True)
+
 
 # Initialize FastAPI app
 app = FastAPI()
+
+# Mount static directories for graphs and maps
+app.mount("/static/graphs", StaticFiles(directory="static/graphs"), name="graphs")
+app.mount("/static/maps", StaticFiles(directory="static/maps"), name="maps")
 
 # Add CORS middleware to allow cross-origin requests (useful when frontend and backend are on different origins)
 app.add_middleware(
@@ -38,27 +47,6 @@ class FlightSearchResponse(BaseModel):
     DESTINATION_AIRPORT: str
     AIRLINE: str
     DELAY: Optional[int] = 0
-
-
-def generate_plot(file_path: str):
-    """
-    Generates a plot and saves it as a PNG file at the specified path.
-
-    Args:
-        file_path: The path where the generated plot will be saved.
-    """
-    # Generate the plot (your plotting function)
-    fig = visualization.plot_delays_by_hour()  # Assuming this returns a matplotlib figure
-
-    # Convert plot to bytes
-    buf = io.BytesIO()
-    canvas = FigureCanvas(fig)
-    canvas.print_png(buf)
-    buf.seek(0)
-
-    # Save the plot as a file in the static directory
-    with open(file_path, 'wb') as f:
-        f.write(buf.read())
 
 
 @app.get("/", response_model=Dict[str, Dict[str, str]])
@@ -210,11 +198,31 @@ def delayed_flights_by_hour(hour: Optional[int] = None, threshold: Optional[int]
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
+def generate_plot_for_delay_by_hours(file_path: str):
+    """
+    Generates a plot and saves it as a PNG file at the specified path.
+
+    Args:
+        file_path: The path where the generated plot will be saved.
+    """
+    # Generate the plot (your plotting function)
+    fig = visualization.plot_delays_by_hour()  # Assuming this returns a matplotlib figure
+
+    # Convert plot to bytes
+    buf = io.BytesIO()
+    canvas = FigureCanvas(fig)
+    canvas.print_png(buf)
+    buf.seek(0)
+
+    # Save the plot as a file in the static directory
+    with open(file_path, 'wb') as f:
+        f.write(buf.read())
+
+
 @app.get("/show_bar_graph", responses={200: {"content": {"image/png": {}}}})
 def show_bar_graph():
     """
     Generates and returns the bar graph for percentage of delayed flights per airline as a PNG image.
-
     The image is also saved to the static folder for later access.
     """
     # Create the graph in memory
@@ -238,6 +246,7 @@ def show_bar_graph():
     })
 
 
+
 @app.get("/show_hourly_bar_graph")
 async def show_hourly_bar_graph(background_tasks: BackgroundTasks):
     """
@@ -250,20 +259,20 @@ async def show_hourly_bar_graph(background_tasks: BackgroundTasks):
     Returns:
         A message indicating the graph generation is in progress.
     """
-    file_path = "static/graphs/hourly_bar_graph.png"
+    file_path = os.path.join(STATIC_FOLDER, "hourly_bar_graph.png")
 
     # Add the task to generate the graph in the background
-    background_tasks.add_task(generate_plot, file_path)
+    background_tasks.add_task(generate_plot_for_delay_by_hours, file_path)
 
     # Return a response indicating that the graph generation is in progress
-    return {"message": "Graph is generated in the background and successfully saved in the static folder."}
+    return {"message": "Graph is generated in the background and successfully saved in the static folder.",
+            "image_url": "/static/graphs/hourly_bar_graph.png"}
 
 
 @app.get("/show_heatmap_of_routes", responses={200: {"content": {"image/png": {}}}})
 def show_heatmap_of_routes():
     """
     Generates and returns a heatmap showing the percentage of delayed flights distributed across flight routes as a PNG image.
-
     The image is also saved to the static folder for later access.
     """
     # Create the heatmap in memory
