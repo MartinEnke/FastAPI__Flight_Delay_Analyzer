@@ -1,64 +1,124 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
+/* Background gradient for the whole page */
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f9;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  /* Gradient from left (pink/purple) to right (blue) */
+  background: linear-gradient(to right, #731448, #0000d1);  /* example colors */
+  /* You can adjust the exact color codes to match the screenshot more closely */
 }
 
-.container {
-    background-color: white;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    width: 80%;
-    max-width: 600px;
+/* Sidebar container with increased width */
+#sidebar {
+  position: fixed;
+  top: 130px;               /* leave space for header (approx height of header) */
+  left: 100;
+  width: 300px;            /* Increased width from 240px to 300px */
+  height: calc(100vh - 0px);  /* full height minus header */
+  border-right: 2px solid #fff;  /* vertical divider line */
+  padding-top: 60px;        /* Add some padding at the top of the sidebar */
+}
+#menu {
+  list-style: none;
+  padding: 0px 0px 0px 40px;    /* small left padding for text */
+}
+/* Use a variable for vertical link spacing */
+:root {
+  --link-vertical-spacing: -5px; /* Default spacing for sidebar links */
+}
+/* Sidebar links with bigger font size */
+#menu a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 17px;  /* Increased font size from 18px to 20px */
+  padding: 15px;  /* Added more padding for better readability */
+  display: block;  /* Ensures the links take up the full width of the sidebar */
+  margin-bottom: var(--link-vertical-spacing); /* Use the variable for vertical spacing */
+  transition: opacity 0.3s ease;  /* Smooth hover effect */
+}
+/* First link with more space from the top */
+
+#menu a:hover {
+  opacity: 5;  /* slight hover effect */
+}
+/* Non-clickable section title in sidebar */
+#menu .section-title {
+  color: #fff;
+  font-weight: bold;
+  margin: 40px 0 80px;  /* Adjusted margin for better spacing */
+  padding: 10px;
+  margin-bottom: 20px;
+  font-size: 20px;  /* Slightly larger font for section titles */
+  pointer-events: none;  /* not clickable */
+}
+/* Add space below the links above 'VISUALIZATIONS' */
+#menu li:not(.section-title):last-child {
+  margin-bottom: 100px;  /* Space between the last link and 'VISUALIZATIONS' */
 }
 
-h1 {
-    text-align: center;
-    color: #333;
-    margin-bottom: 20px;
+/* Title bar (fixed header) */
+#title-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  border-bottom: 2px solid #fff;  /* horizontal divider line */
+  z-index: 1000;  /* ensure it stays on top */
+  padding:40px 20px;  /* some padding for spacing */
+}
+#title-bar h1 {
+  color: #fff;
+  margin: 0;
+  font-size: 40px;
+  margin-left: 1100px;  /* Moves the title to the left by 20px */
 }
 
-h2 {
-    margin-bottom: 10px;
+/* Main content area (to the right of sidebar) */
+#main-container {
+  margin-top: 60px;    /* push below the fixed header */
+  margin-left: 240px;  /* push content to the right of sidebar */
+  position: relative;  /* containing block for absolute children */
+  padding: 20px;
+}
+#search-title {
+  color: #fff;
+  text-align: center;
+  font-size: 32px;
+  margin: 120px 0 20px;
+}
+#search-input {
+  display: block;
+  width: 150px;
+  margin: 0 auto 30px;  /* center horizontally, with bottom margin for spacing */
+  padding: 30px 30px 12px 50px;
+  font-size: 18px;
+  color: #fff;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #fff;  /* underline style border */
+  text-align: center;
 }
 
-.section {
-    margin-bottom: 20px;
+#bottom-label {
+  position: absolute;
+  bottom: -300px;
+  right: 50px;
+  color: #fff;
+  font-size: 25px;
+  margin-left: 500;
 }
 
-input[type="number"], input[type="text"] {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
 
-button {
-    padding: 10px 15px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-button:hover {
-    background-color: #45a049;
-}
-
-#graph-container img {
-    width: 100%;
-    max-height: 400px;
-    margin-top: 20px;
+/* Scrollable results section */
+/* Scrollable results section */
+.results-container {
+  max-height: 800px;      /* Adjust the height as needed */
+  width: 400px;
+  overflow-y: auto;       /* Makes the section scrollable */
+  background-color: #beeef3; /* White background for the result area */
+  color: #000;            /* Text color for better visibility */
+  padding: 15px;          /* Padding inside the results section */
+  border-radius: 8px;     /* Rounded corners */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Light shadow for the box */
+  margin-top: 30px;       /* Add space between the input and results */
+  margin-left: 375px;      /* Adjust this value to move the container to the right */
 }

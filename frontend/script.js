@@ -1,169 +1,139 @@
-const apiUrl = "http://127.0.0.1:8000";  // Replace with your API URL
+const apiUrl = "http://127.0.0.1:8000";  // The backend API URL
 
-// Fetch flight by ID
-function getFlightById() {
-    const flightId = document.getElementById("flight-id").value;
-    fetch(`${apiUrl}/flight_by_id?flight_id=${flightId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.FLIGHT_ID) {
-                document.getElementById("flight-info").innerHTML = `
-                    <p><strong>Flight ID:</strong> ${data.FLIGHT_ID}</p>
-                    <p><strong>Origin Airport:</strong> ${data.ORIGIN_AIRPORT}</p>
-                    <p><strong>Destination Airport:</strong> ${data.DESTINATION_AIRPORT}</p>
-                    <p><strong>Airline:</strong> ${data.AIRLINE}</p>
-                    <p><strong>Delay:</strong> ${data.DELAY} minutes</p>
-                `;
-            } else {
-                document.getElementById("flight-info").innerHTML = `<p>No flight found.</p>`;
-            }
-        })
-        .catch(error => {
-            document.getElementById("flight-info").innerHTML = `<p>Error fetching data. Please try again later.</p>`;
-        });
+// Define the content for each section
+const contentMap = {
+  "id": {
+    title: "Search Flight by ID",
+    placeholder: "Enter Flight ID",
+    subtitle: "Flight by Flight ID",
+    endpoint: "/flight_by_id"
+  },
+  "airline": {
+    title: "Search Flights by Airline",
+    placeholder: "Enter Airline Name",
+    subtitle: "Flights by Airline",
+    endpoint: "/delays_by_airline"
+  },
+  "airport": {
+    title: "Search Flights by Airport",
+    placeholder: "Enter Airport IATA",
+    subtitle: "Flights by Airport",
+    endpoint: "/delays_by_airport"
+  },
+  "hour": {
+    title: "Search Flights by Hour",
+    placeholder: "Enter Hour (0-23)",
+    subtitle: "Flights by Hour",
+    endpoint: "/delayed_flights_by_hour"
+  },
+  "delays-airlines": {
+    title: "Flight Delays by Airline",
+    placeholder: "Enter Airline (optional)",
+    subtitle: "Delayed Flights by Airline",
+    endpoint: "/delays_by_airline"
+  },
+  "delays-hour": {
+    title: "Flight Delays by Hour",
+    placeholder: "Enter Hour (0-23)",
+    subtitle: "Delayed Flights by Hour",
+    endpoint: "/delayed_flights_by_hour"
+  },
+  "delays-routes": {
+    title: "Flight Delays by Routes",
+    placeholder: "Enter Route",
+    subtitle: "Delayed Flights by Routes",
+    endpoint: "/delays_by_airport"
+  },
+  "heatmap-routes": {
+    title: "Flight Delays Heatmap by Routes",
+    placeholder: "Enter Parameters",
+    subtitle: "Flight Delays Heatmap",
+    endpoint: "/show_heatmap_of_routes"
+  }
+};
+
+// Grab references to the elements we need to update
+const searchTitleEl = document.getElementById('search-title');
+const searchInputEl = document.getElementById('search-input');
+const bottomLabelEl = document.getElementById('bottom-label');
+const resultsContainer = document.getElementById('results-container');
+
+// Function to fetch data from the backend
+async function fetchData(endpoint, params) {
+  const url = new URL(apiUrl + endpoint);
+  if (params) {
+    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+  }
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Failed to fetch data');
+  }
+  return response.json();
 }
 
-// Fetch delayed flights by airline
-function getDelaysByAirline() {
-    const airline = document.getElementById("airline-name").value;
-    fetch(`${apiUrl}/delays_by_airline?airline=${airline}`)
-        .then(response => response.json())
-        .then(data => {
-            let delaysHtml = "";
-            if (data.length > 0) {
-                data.forEach(flight => {
-                    delaysHtml += `
-                        <p><strong>Flight ID:</strong> ${flight.FLIGHT_ID} - <strong>Delay:</strong> ${flight.DELAY} minutes</p>
-                    `;
-                });
-                document.getElementById("delays-by-airline").innerHTML = delaysHtml;
-            } else {
-                document.getElementById("delays-by-airline").innerHTML = `<p>No delays found for the airline.</p>`;
-            }
-        })
-        .catch(error => {
-            document.getElementById("delays-by-airline").innerHTML = `<p>Error fetching data. Please try again later.</p>`;
-        });
+// Function to display the results
+function displayResults(data) {
+  // Clear existing results
+  resultsContainer.innerHTML = '';
+
+  // Check if there is data
+  if (Array.isArray(data) && data.length > 0) {
+    data.slice(0, 10).forEach(result => {
+      const resultItem = document.createElement('div');
+      resultItem.classList.add('result-item');
+      resultItem.textContent = JSON.stringify(result, null, 2); // Display data as JSON for now
+      resultsContainer.appendChild(resultItem);
+    });
+  } else {
+    resultsContainer.innerHTML = '<p>No results found.</p>';
+  }
 }
 
+// Attach click event listeners to each sidebar link
+document.querySelectorAll('#menu a[data-section]').forEach(link => {
+  link.addEventListener('click', event => {
+    event.preventDefault();  // Prevent default link behavior
+    const section = link.getAttribute('data-section');
 
-// Fetch delayed flights by airport
-function getDelaysByAirport() {
-    const airportCode = document.getElementById("airport-name").value;
-    fetch(`${apiUrl}/delays_by_airport?airport_code=${airportCode}`)
-        .then(response => response.json())
-        .then(data => {
-            let delaysHtml = "";
-            if (data.length > 0) {
-                data.forEach(flight => {
-                    delaysHtml += `
-                        <p><strong>Flight ID:</strong> ${flight.FLIGHT_ID} - <strong>Delay:</strong> ${flight.DELAY} minutes</p>
-                    `;
-                });
-                document.getElementById("delays-by-airport").innerHTML = delaysHtml;
-            } else {
-                document.getElementById("delays-by-airport").innerHTML = `<p>No delays found for the airport.</p>`;
-            }
-        })
-        .catch(error => {
-            document.getElementById("delays-by-airport").innerHTML = `<p>Error fetching data. Please try again later.</p>`;
-        });
-}
+    // Update the main content (title, placeholder, subtitle)
+    if (contentMap[section]) {
+      searchTitleEl.textContent = contentMap[section].title;
+      searchInputEl.setAttribute('placeholder', contentMap[section].placeholder);
+      bottomLabelEl.textContent = contentMap[section].subtitle;
+    }
+  });
+});
 
-// Get flights by date
-function getFlightsByDate() {
-    const date = document.getElementById("flight-date").value;
-    fetch(`${apiUrl}/flights_by_date?date=${date}`)
-        .then(response => response.json())
-        .then(data => {
-            let flightsHtml = "";
-            if (data.length > 0) {
-                data.forEach(flight => {
-                    flightsHtml += `
-                        <p><strong>Flight ID:</strong> ${flight.FLIGHT_ID} - <strong>Delay:</strong> ${flight.DELAY} minutes</p>
-                    `;
-                });
-                document.getElementById("flights-by-date").innerHTML = flightsHtml;
-            } else {
-                document.getElementById("flights-by-date").innerHTML = `<p>No flights found for the date.</p>`;
-            }
-        })
-        .catch(error => {
-            document.getElementById("flights-by-date").innerHTML = `<p>Error fetching data. Please try again later.</p>`;
-        });
-}
 
-// Get delayed flights by hour
-function getDelayedFlightsByHour() {
-    const hour = document.getElementById("hour").value;
-    fetch(`${apiUrl}/delayed_flights_by_hour?hour=${hour}`)
-        .then(response => response.json())
-        .then(data => {
-            let delayedHtml = "";
-            if (data.length > 0) {
-                data.forEach(flight => {
-                    delayedHtml += `
-                        <p><strong>Hour:</strong> ${flight.hour} - <strong>Delay:</strong> ${flight.percent_delayed}%</p>
-                    `;
-                });
-                document.getElementById("delayed-by-hour").innerHTML = delayedHtml;
-            } else {
-                document.getElementById("delayed-by-hour").innerHTML = `<p>No delayed flights found for the hour.</p>`;
-            }
-        })
-        .catch(error => {
-            document.getElementById("delayed-by-hour").innerHTML = `<p>Error fetching data. Please try again later.</p>`;
-        });
-}
+// Attach keydown event listener to the search input field
+document.getElementById('search-input').addEventListener('keydown', async (event) => {
+  // Check if the 'Enter' key (key code 13) is pressed
+  if (event.key === 'Enter') {
+    const section = document.querySelector('#menu a.active').getAttribute('data-section'); // Get selected section
+    const userInput = event.target.value.trim();
 
-// Generate Delay by Airline Graph
-function generateGraph() {
-    fetch(`${apiUrl}/show_bar_graph`)
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById("graph-message").innerHTML = data.message;
-            const imageUrl = data.image_url;  // Example: /static/graphs/bar_graph.png
-            const img = new Image();
-            img.src = "http://127.0.0.1:8000" + imageUrl;  // Full URL will be used by the browser
-            img.onload = function() {
-                document.getElementById("graph-container").innerHTML = ''; // Clear any previous content
-                document.getElementById("graph-container").appendChild(img); // Add the new graph image
-            };
-            img.onerror = function() {
-                document.getElementById("graph-message").innerHTML = `<p>Error loading graph image.</p>`;
-            };
-        })
-        .catch(error => {
-            document.getElementById("graph-message").innerHTML = `<p>Error generating graph. Please try again later.</p>`;
-        });
-}
+    // Make sure the user input is not empty before making the request
+    if (!userInput) {
+      alert('Please enter a value to search.');
+      return;
+    }
 
-// Generate Heatmap
-function generateHeatmap() {
-    fetch(`${apiUrl}/show_heatmap_of_routes`)
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById("graph-message").innerHTML = data.message;
-            const imageUrl = data.image_url;  // Example: /static/graphs/heatmap_of_routes.png
-            console.log('Heatmap image URL:', imageUrl);
+    try {
+      let params = {};
+      if (section === 'id') {
+        params = { flight_id: userInput }; // Use user input as flight ID
+      } else if (section === 'airline') {
+        params = { airline: userInput }; // Use user input as airline
+      } else if (section === 'airport') {
+        params = { airport_code: userInput }; // Use user input as airport code
+      } else if (section === 'hour') {
+        params = { hour: userInput }; // Use user input as hour
+      }
 
-            const img = new Image();
-            img.src = "http://127.0.0.1:8000" + imageUrl;  // Full URL will be used by the browser
-            img.onload = function() {
-                document.getElementById("graph-container").innerHTML = ''; // Clear any previous content
-                document.getElementById("graph-container").appendChild(img); // Add the new heatmap image
-            };
-            img.onerror = function() {
-                document.getElementById("graph-message").innerHTML = `<p>Error loading heatmap image.</p>`;
-            };
-        })
-        .catch(error => {
-            document.getElementById("graph-message").innerHTML = `<p>Error generating heatmap. Please try again later.</p>`;
-        });
-}
-
-// Show Map of Routes
-function showMap() {
-    const mapUrl = `${apiUrl}/show_map_of_routes`;  // URL to fetch map HTML
-    window.open(mapUrl, "_blank");  // Open the map in a new tab
-}
+      const data = await fetchData(contentMap[section].endpoint, params);
+      displayResults(data); // Display the results in the results container
+    } catch (error) {
+      resultsContainer.innerHTML = "Error fetching data: " + error.message;
+    }
+  }
+});
